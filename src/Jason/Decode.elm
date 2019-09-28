@@ -59,8 +59,6 @@ import Dict exposing (Dict)
 import Jason.Encode
 import Jason.JsonValue as JsonValue exposing (JsonValue(..))
 import Json.Decode
-import Json.Encode
-import Set exposing (Set)
 
 
 
@@ -78,14 +76,14 @@ Now, imagine we had done the same here. Let’s try to implement the `string` de
     string =
         xxx
 
-What should `xxx` be? Well, the type annotation says that it has to be of the
-Decoder type. How do we get such a value? There’s just one: `Decoder`.
+What should `xxx` be? Well, the type annotation says that `xxx` has to be of
+the Decoder type. How do we get such a value? There’s just one: `Decoder`.
 
     string : Decoder String
     string =
         Decoder
 
-Now let’s do `bool`:
+Now let’s do `bool`. Again, there’s only one possible implementation:
 
     bool : Decoder Bool
     bool =
@@ -94,10 +92,19 @@ Now let’s do `bool`:
 How are we going to tell `string` and `bool` apart when running decoders?
 They’re the same value!
 
+When looking at elm/json’s definition (`type Decoder a = Decoder`), you might
+recognize it looking like a _phantom type._ A phantom type is a type that has
+a type variable (`a` in this case) on the left side, but never uses it on the
+right side.
+
+While elm/json’s definition does look like a phantom type, it is not. If you
+look at the JavaScript code of elm/json, you can see that the `Decoder` value
+actually contains more information which _does_ use the `a`.
+
 elm/json gets away with this type since it’s implemented in JavaScript. But
-for an Elm implementation, we need to attach more information to the
-`Decoder` value. (That’s what elm/json is doing behind the scenes in
-JavaScript.)
+for an Elm implementation, we need to attach that extra I mentioned
+information to the `Decoder` value. (That’s what elm/json is doing behind the
+scenes in JavaScript.)
 
 What kind of information should we attach? A function!
 
@@ -106,12 +113,16 @@ type Decoder a
     = Decoder (DecoderFunction a)
 
 
-{-| A Decoder is really just a function that takes a JSON value as input and
-returns a Result.
+{-| A Decoder is really just a function in disguse that takes a JSON value as
+input and returns a Result (the decoding might fail).
 
-This function is still wrapped in the above Decoder type so that others
-cannot get to the function directly – the `Decoder` value is not exposed,
-only the type.
+This function is wrapped in the above Decoder type so that others cannot get
+to the function directly – the `Decoder` value is not exposed, only the type.
+
+In a different world, elm/json’s definition of a Decoder could have been something
+like this:
+
+    type Decoder a = Json.Decode.Value -> Result Json.Decode.Error a
 
 -}
 type alias DecoderFunction a =

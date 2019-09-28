@@ -59,33 +59,7 @@ values into values that can be represented in JSON.
 -}
 encode : Int -> Value -> String
 encode indentLevel (JsonValue.Value jsonValue) =
-    Json.Encode.encode indentLevel (encodeHelp jsonValue)
-
-
-encodeHelp : JsonValue -> Json.Encode.Value
-encodeHelp jsonValue =
-    case jsonValue of
-        JsonString str ->
-            Json.Encode.string str
-
-        JsonNumber num ->
-            Json.Encode.float num
-
-        JsonBool boolean ->
-            Json.Encode.bool boolean
-
-        JsonNull ->
-            Json.Encode.null
-
-        JsonArray arr ->
-            Json.Encode.array encodeHelp arr
-
-        JsonObject pairs ->
-            Json.Encode.dict identity encodeHelp pairs
-
-        CompatUndefined ->
-            -- This should never be reached.
-            Json.Encode.null
+    Json.Encode.encode indentLevel (JsonValue.encode jsonValue)
 
 
 
