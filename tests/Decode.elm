@@ -202,6 +202,10 @@ suite =
                     verifySameResult
                         (Jason.Decode.oneOf (List.repeat numDecoders Jason.Decode.int))
                         (Json.Decode.oneOf (List.repeat numDecoders Json.Decode.int))
+            , fuzz jsonFuzzer "oneOf with empty list always fails" <|
+                \val ->
+                    Jason.Decode.decodeValue (Jason.Decode.oneOf []) val
+                        |> Expect.err
             ]
         , describe "Run Decoders"
             [ -- These are also tested extensively in `verifySameResult`.
