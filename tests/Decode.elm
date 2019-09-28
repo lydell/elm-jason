@@ -9,38 +9,53 @@ import Json.Decode
 import Test exposing (Test, describe, fuzz, fuzz2)
 
 
+type alias RecursiveFuzzerConfig a =
+    { maxDepth : Int
+    , baseCases : List (Fuzzer a)
+    , recursiveCases : Fuzzer a -> List (Fuzzer a)
+    }
+
+
+recursiveFuzzer : RecursiveFuzzerConfig a -> Fuzzer a
+recursiveFuzzer { maxDepth, baseCases, recursiveCases } =
+    let
+        recurse depth =
+            if depth > maxDepth then
+                Fuzz.oneOf baseCases
+
+            else
+                let
+                    base =
+                        List.map (\fuzzer -> ( 1, fuzzer )) baseCases
+
+                    next =
+                        recurse (depth + 1)
+
+                    recursive =
+                        ( 1 / toFloat depth, Fuzz.oneOf (recursiveCases next) )
+                in
+                Fuzz.frequency (recursive :: base)
+    in
+    recurse 1
+
+
 jsonFuzzer : Fuzzer Jason.Decode.Value
 jsonFuzzer =
-    let
-        maxDepth =
-            2
-
-        ignore =
-            ( 0, Fuzz.constant JsonNull )
-
-        recurse depth =
-            Fuzz.frequency
-                [ ( 1, Fuzz.map JsonString Fuzz.string )
-                , ( 1, Fuzz.map JsonNumber Fuzz.float )
-                , ( 1, Fuzz.map JsonBool Fuzz.bool )
-                , ( 1, Fuzz.constant JsonNull )
-                , if depth > maxDepth then
-                    ignore
-
-                  else
-                    let
-                        next =
-                            recurse (depth + 1)
-                    in
-                    ( 1 / depth
-                    , Fuzz.oneOf
-                        [ Fuzz.map JsonArray (Fuzz.array next)
-                        , Fuzz.map JsonObject (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
-                        ]
-                    )
+    recursiveFuzzer
+        { maxDepth = 2
+        , baseCases =
+            [ Fuzz.map JsonString Fuzz.string
+            , Fuzz.map JsonNumber Fuzz.float
+            , Fuzz.map JsonBool Fuzz.bool
+            , Fuzz.constant JsonNull
+            ]
+        , recursiveCases =
+            \next ->
+                [ Fuzz.map JsonArray (Fuzz.array next)
+                , Fuzz.map JsonObject (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
                 ]
-    in
-    Fuzz.map JsonValue.Value (recurse 1)
+        }
+        |> Fuzz.map JsonValue.Value
 
 
 verifySameResult : Jason.Decode.Decoder a -> Json.Decode.Decoder a -> Jason.Decode.Value -> Expectation
