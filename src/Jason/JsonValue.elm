@@ -1,4 +1,10 @@
-module Jason.JsonValue exposing (JsonValue(..), Value(..), decoder, encode)
+module Jason.JsonValue exposing
+    ( JsonValue(..)
+    , Value(..)
+    , decoder
+    , encode
+    , unwrap
+    )
 
 {-| This is the backbone data type for this entire package. The regular
 `Json.Decode.decodeString` is used to turn raw JSON into this data type,
@@ -104,3 +110,8 @@ encode jsonValue =
         CompatUndefined ->
             -- This should never be reached – see the `index` decoder.
             Json.Encode.null
+
+
+unwrap : Value -> JsonValue
+unwrap (Value jsonValue) =
+    jsonValue

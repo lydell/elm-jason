@@ -7,11 +7,13 @@
   "exposed-modules": {
     "Jason": ["Jason.Decode", "Jason.Encode"]
   },
-  "source-directories": ["src"],
   "elm-version": "0.19.0 <= v < 0.20.0",
   "dependencies": {
     "elm/core": "1.0.0 <= v < 2.0.0",
-    "elm/json": "1.0.0 <= v < 2.0.0"
+    "elm/json": "1.1.0 <= v < 2.0.0"
   },
-  "test-dependencies": {}
+  "test-dependencies": {
+    "elm-explorations/test": "1.2.2 <= v < 2.0.0"
+  },
+  "source-directories": ["src"]
 }

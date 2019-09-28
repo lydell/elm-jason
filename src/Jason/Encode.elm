@@ -113,7 +113,7 @@ list f =
 {-| -}
 array : (a -> Value) -> Array a -> Value
 array f =
-    JsonValue.Value << JsonArray << Array.map (f >> unwrap)
+    JsonValue.Value << JsonArray << Array.map (f >> JsonValue.unwrap)
 
 
 {-| -}
@@ -129,7 +129,7 @@ set f =
 {-| -}
 object : List ( String, Value ) -> Value
 object =
-    JsonValue.Value << JsonObject << Dict.fromList << List.map (Tuple.mapSecond unwrap)
+    JsonValue.Value << JsonObject << Dict.fromList << List.map (Tuple.mapSecond JsonValue.unwrap)
 
 
 {-| -}
@@ -138,8 +138,3 @@ dict toKey toValue =
     Dict.toList
         >> List.map (Tuple.mapBoth toKey toValue)
         >> object
-
-
-unwrap : Value -> JsonValue
-unwrap (JsonValue.Value jsonValue) =
-    jsonValue
