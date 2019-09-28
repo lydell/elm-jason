@@ -306,9 +306,6 @@ keyValuePairs (Decoder decoderFunction) =
             case jsonValue of
                 JsonObject pairs ->
                     keyValuePairsHelp decoderFunction pairs (Ok [])
-                        -- `keyValuePairsHelp` uses `::` to build the list, which means that
-                        -- it will end up backwards. So reverse it.
-                        |> Result.map List.reverse
 
                 _ ->
                     failure "an OBJECT" jsonValue
@@ -321,7 +318,9 @@ keyValuePairsHelp : DecoderFunction a -> List ( String, JsonValue ) -> Result Er
 keyValuePairsHelp decoderFunction pairs acc =
     case pairs of
         [] ->
-            acc
+            -- Since `::` is used below to build the list, it will end up
+            -- backwards. Reverse it before returning.
+            Result.map List.reverse acc
 
         ( key, first ) :: rest ->
             case decoderFunction first of
@@ -479,10 +478,8 @@ oneOf : List (Decoder a) -> Decoder a
 oneOf decoders =
     Decoder
         (\jsonValue ->
-            -- `oneOfHelp` uses `::` to build the errors list, which means that
-            -- it will end up backwards. So reverse it.
             oneOfHelp decoders jsonValue (Err [])
-                |> Result.mapError (List.reverse >> OneOf)
+                |> Result.mapError OneOf
         )
 
 
@@ -506,7 +503,9 @@ oneOfHelp : List (Decoder a) -> JsonValue -> Result (List Error) a -> Result (Li
 oneOfHelp decoders jsonValue acc =
     case decoders of
         [] ->
-            acc
+            -- Since `::` is used to build the errors list below, it will end up
+            -- backwards. Reverse it before returning.
+            Result.mapError List.reverse acc
 
         (Decoder first) :: rest ->
             case first jsonValue of
