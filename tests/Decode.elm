@@ -11,49 +11,48 @@ import Test exposing (Test, describe, fuzz, fuzz2)
 
 type alias RecursiveFuzzerConfig a =
     { maxDepth : Int
-    , baseCases : List (Fuzzer a)
-    , recursiveCases : Fuzzer a -> List (Fuzzer a)
+    , baseWeight : Float
+    , recurseWeight : Int -> Float
+    , base : Fuzzer a
+    , recurse : Fuzzer a -> Fuzzer a
     }
 
 
 recursiveFuzzer : RecursiveFuzzerConfig a -> Fuzzer a
-recursiveFuzzer { maxDepth, baseCases, recursiveCases } =
+recursiveFuzzer { maxDepth, baseWeight, recurseWeight, base, recurse } =
     let
-        recurse depth =
+        helper depth =
             if depth > maxDepth then
-                Fuzz.oneOf baseCases
+                base
 
             else
-                let
-                    base =
-                        List.map (\fuzzer -> ( 1, fuzzer )) baseCases
-
-                    next =
-                        recurse (depth + 1)
-
-                    recursive =
-                        ( 1 / toFloat depth, Fuzz.oneOf (recursiveCases next) )
-                in
-                Fuzz.frequency (recursive :: base)
+                Fuzz.frequency
+                    [ ( baseWeight, base )
+                    , ( recurseWeight depth, recurse (helper (depth + 1)) )
+                    ]
     in
-    recurse 1
+    helper 1
 
 
 jsonFuzzer : Fuzzer Jason.Decode.Value
 jsonFuzzer =
     recursiveFuzzer
         { maxDepth = 2
-        , baseCases =
-            [ Fuzz.map JsonString Fuzz.string
-            , Fuzz.map JsonNumber Fuzz.float
-            , Fuzz.map JsonBool Fuzz.bool
-            , Fuzz.constant JsonNull
-            ]
-        , recursiveCases =
-            \next ->
-                [ Fuzz.map JsonArray (Fuzz.array next)
-                , Fuzz.map JsonObject (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
+        , baseWeight = 1
+        , recurseWeight = \depth -> (1 / 10) / toFloat depth
+        , base =
+            Fuzz.oneOf
+                [ Fuzz.map JsonString Fuzz.string
+                , Fuzz.map JsonNumber Fuzz.float
+                , Fuzz.map JsonBool Fuzz.bool
+                , Fuzz.constant JsonNull
                 ]
+        , recurse =
+            \next ->
+                Fuzz.oneOf
+                    [ Fuzz.map JsonArray (Fuzz.array next)
+                    , Fuzz.map JsonObject (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
+                    ]
         }
         |> Fuzz.map JsonValue.Value
 
