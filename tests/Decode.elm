@@ -6,6 +6,7 @@ import Jason.Decode
 import Jason.Encode
 import Jason.JsonValue as JsonValue exposing (JsonValue(..))
 import Json.Decode
+import List.Extra
 import Test exposing (Test, describe, fuzz, fuzz2)
 
 
@@ -37,7 +38,7 @@ recursiveFuzzer { maxDepth, baseWeight, recurseWeight, base, recurse } =
 jsonFuzzer : Fuzzer Jason.Decode.Value
 jsonFuzzer =
     recursiveFuzzer
-        { maxDepth = 0 -- Recursion disabled for now since tests fail in mysterious ways.
+        { maxDepth = 2
         , baseWeight = 1
         , recurseWeight = \depth -> (1 / 10) / toFloat depth
         , base =
@@ -51,7 +52,8 @@ jsonFuzzer =
             \next ->
                 Fuzz.oneOf
                     [ Fuzz.map JsonArray (Fuzz.array next)
-                    , Fuzz.map JsonObject (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
+                    , Fuzz.map (JsonObject << List.Extra.uniqueBy Tuple.first)
+                        (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
                     ]
         }
         |> Fuzz.map JsonValue.Value
