@@ -106,6 +106,19 @@ suite =
                 verifySameResult
                     (Jason.Decode.keyValuePairs (Jason.Decode.nullable Jason.Decode.string))
                     (Json.Decode.keyValuePairs (Json.Decode.nullable Json.Decode.string))
+            , fuzz (Fuzz.list Fuzz.int) "keyValuePairs keeps original order" <|
+                \items ->
+                    let
+                        pairs =
+                            List.indexedMap
+                                (\i num -> ( "x" ++ String.fromInt i, num ))
+                                items
+                    in
+                    pairs
+                        |> List.map (Tuple.mapSecond Jason.Encode.int)
+                        |> Jason.Encode.object
+                        |> Jason.Decode.decodeValue (Jason.Decode.keyValuePairs Jason.Decode.int)
+                        |> Expect.equal (Ok pairs)
             , fuzz jsonFuzzer "oneOrMore" <|
                 verifySameResult
                     (Jason.Decode.oneOrMore (::) (Jason.Decode.list Jason.Decode.int))
