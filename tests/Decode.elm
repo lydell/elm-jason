@@ -38,9 +38,9 @@ recursiveFuzzer { maxDepth, baseWeight, recurseWeight, base, recurse } =
 jsonFuzzer : Fuzzer Jason.Decode.Value
 jsonFuzzer =
     recursiveFuzzer
-        { maxDepth = 2
+        { maxDepth = 3
         , baseWeight = 1
-        , recurseWeight = \depth -> (1 / 10) / toFloat depth
+        , recurseWeight = \depth -> (1 / 5) / toFloat depth
         , base =
             Fuzz.oneOf
                 [ Fuzz.map JsonString Fuzz.string
@@ -52,11 +52,25 @@ jsonFuzzer =
             \next ->
                 Fuzz.oneOf
                     [ Fuzz.map JsonArray (Fuzz.array next)
-                    , Fuzz.map (JsonObject << List.Extra.uniqueBy Tuple.first)
+                    , Fuzz.map
+                        (JsonObject << List.Extra.uniqueBy Tuple.first << List.sortBy (Tuple.first >> jsonKey))
                         (Fuzz.list (Fuzz.tuple ( Fuzz.string, next )))
                     ]
         }
         |> Fuzz.map JsonValue.Value
+
+
+{-| Digit-only keys always come first in numeric order in JavaScript objects.
+(Other keys are in insertion order.) This emulates those sorting rules.
+-}
+jsonKey : String -> ( Int, Int )
+jsonKey key =
+    case ( String.all Char.isDigit key, String.toInt key ) of
+        ( True, Just num ) ->
+            ( 0, num )
+
+        _ ->
+            ( 1, -1 )
 
 
 verifySameResult : Jason.Decode.Decoder a -> Json.Decode.Decoder a -> Jason.Decode.Value -> Expectation
