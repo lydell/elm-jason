@@ -290,17 +290,25 @@ arrayHelp decoderFunction i jsonArray acc =
                     Err (Index i err)
 
 
-{-| The `dict` decoder is implemented very similarly to `array` and `list`.
-After checking that the JSON input is an object, we need to check all the
-values of it.
--}
 dict : Decoder a -> Decoder (Dict String a)
-dict (Decoder decoderFunction) =
+dict =
+    keyValuePairs >> map Dict.fromList
+
+
+{-| The `keyValuePairs` decoder is implemented very similarly to `array` and
+`list`. After checking that the JSON input is an object, we need to check all
+the values of it.
+-}
+keyValuePairs : Decoder a -> Decoder (List ( String, a ))
+keyValuePairs (Decoder decoderFunction) =
     Decoder
         (\jsonValue ->
             case jsonValue of
-                JsonObject dictionary ->
-                    dictHelp decoderFunction (Dict.toList dictionary) (Ok Dict.empty)
+                JsonObject pairs ->
+                    keyValuePairsHelp decoderFunction pairs (Ok [])
+                        -- `keyValuePairsHelp` uses `::` to build the list, which means that
+                        -- it will end up backwards. So reverse it.
+                        |> Result.map List.reverse
 
                 _ ->
                     failure "an OBJECT" jsonValue
@@ -309,8 +317,8 @@ dict (Decoder decoderFunction) =
 
 {-| Again, a tail call recursive helper function.
 -}
-dictHelp : DecoderFunction a -> List ( String, JsonValue ) -> Result Error (Dict String a) -> Result Error (Dict String a)
-dictHelp decoderFunction pairs acc =
+keyValuePairsHelp : DecoderFunction a -> List ( String, JsonValue ) -> Result Error (List ( String, a )) -> Result Error (List ( String, a ))
+keyValuePairsHelp decoderFunction pairs acc =
     case pairs of
         [] ->
             acc
@@ -318,19 +326,13 @@ dictHelp decoderFunction pairs acc =
         ( key, first ) :: rest ->
             case decoderFunction first of
                 Ok val ->
-                    dictHelp
+                    keyValuePairsHelp
                         decoderFunction
                         rest
-                        (Result.map (Dict.insert key val) acc)
+                        (Result.map ((::) ( key, val )) acc)
 
                 Err err ->
                     Err (Field key err)
-
-
-{-| -}
-keyValuePairs : Decoder a -> Decoder (List ( String, a ))
-keyValuePairs =
-    dict >> map Dict.toList
 
 
 {-| Copied straight from elm/json.
@@ -371,9 +373,9 @@ field key (Decoder decoderFunction) =
                     failure ("an OBJECT with a field named `" ++ key ++ "`") jsonValue
             in
             case jsonValue of
-                JsonObject dictionary ->
-                    case Dict.get key dictionary of
-                        Just jsonValue2 ->
+                JsonObject pairs ->
+                    case find (Tuple.first >> (==) key) pairs of
+                        Just ( _, jsonValue2 ) ->
                             case decoderFunction jsonValue2 of
                                 Ok val ->
                                     Ok val
@@ -387,6 +389,23 @@ field key (Decoder decoderFunction) =
                 _ ->
                     keyFailure
         )
+
+
+{-| A little helper function for finding the first item in a list
+that satifies the passed function `f`.
+-}
+find : (a -> Bool) -> List a -> Maybe a
+find f items =
+    case items of
+        [] ->
+            Nothing
+
+        first :: rest ->
+            if f first then
+                Just first
+
+            else
+                find f rest
 
 
 {-| Copied straight from elm/json.

@@ -107,19 +107,21 @@ null =
 {-| -}
 list : (a -> Value) -> List a -> Value
 list f =
-    array f << Array.fromList
+    Array.fromList >> array f
 
 
 {-| -}
 array : (a -> Value) -> Array a -> Value
 array f =
-    JsonValue.Value << JsonArray << Array.map (f >> JsonValue.unwrap)
+    Array.map (f >> JsonValue.unwrap)
+        >> JsonArray
+        >> JsonValue.Value
 
 
 {-| -}
 set : (a -> Value) -> Set a -> Value
 set f =
-    list f << Set.toList
+    Set.toList >> list f
 
 
 
@@ -129,7 +131,9 @@ set f =
 {-| -}
 object : List ( String, Value ) -> Value
 object =
-    JsonValue.Value << JsonObject << Dict.fromList << List.map (Tuple.mapSecond JsonValue.unwrap)
+    List.map (Tuple.mapSecond JsonValue.unwrap)
+        >> JsonObject
+        >> JsonValue.Value
 
 
 {-| -}

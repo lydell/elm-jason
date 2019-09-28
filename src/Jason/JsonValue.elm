@@ -21,7 +21,6 @@ and an `encode` function for the mentioned usage with the regular
 -}
 
 import Array exposing (Array)
-import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
 
@@ -36,9 +35,11 @@ type JsonValue
       -- … or arrays or objects, containing … more JSON values! Note that
       -- an array may contain mixed values (such as `[1, true, "string"]`),
       -- not just a single type. Same thing for objects, which are represented
-      -- as `Dict`s rather than records since we can’t know what fields to expect.
+      -- as `List`s of key-value pairs rather than records since we can’t know
+      -- what fields to expect. (A `Dict` isn’t used to, because the order of
+      -- the fields need to be preserved for full elm/json compatibility.)
     | JsonArray (Array JsonValue)
-    | JsonObject (Dict String JsonValue)
+    | JsonObject (List ( String, JsonValue ))
       -- `undefined` is not part of JSON, but is defined here to due to a quirk
       -- in the `index` decoder.
     | CompatUndefined
@@ -55,10 +56,11 @@ not to encourage people to reach into the JSON manually. That’s an
 anti-pattern. It’s better to decode the JSON into data types that are easier
 to work with.
 
-Since all JSON objects are represented as `Dict`s, you get `Maybe`s
-back every time you try to read fields. And you’d have to use a `case of`
-on the values you get out, because you won’t know if it is a string,
-float, boolean or whatever.
+Since all JSON objects are represented as `List`s of key-value pairs, you
+first have to try to find what you’re looking for in the list, and then
+you’ll end up with `Maybe`s for the values. And you’d have to use a `case of`
+on the values you get out, because you won’t know if it is a string, float,
+boolean or whatever.
 
 -}
 type Value
@@ -77,7 +79,7 @@ decoder =
         , Json.Decode.map JsonBool Json.Decode.bool
         , Json.Decode.null JsonNull
         , Json.Decode.map JsonArray (Json.Decode.array decoderLazy)
-        , Json.Decode.map JsonObject (Json.Decode.dict decoderLazy)
+        , Json.Decode.map JsonObject (Json.Decode.keyValuePairs decoderLazy)
         ]
 
 
@@ -105,7 +107,7 @@ encode jsonValue =
             Json.Encode.array encode arr
 
         JsonObject pairs ->
-            Json.Encode.dict identity encode pairs
+            Json.Encode.object (List.map (Tuple.mapSecond encode) pairs)
 
         CompatUndefined ->
             -- This should never be reached – see the `index` decoder.
