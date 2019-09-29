@@ -1,4 +1,4 @@
-module Jason.Error exposing (Error(..), fromCoreError, toString)
+module Jason.Error exposing (Error(..), fromCoreError, toCoreError, toString)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -15,6 +15,31 @@ type Error
     | ErrorAtIndex { index : Int, error : Error }
     | OneOfErrors (List Error)
     | CustomError String
+
+
+toCoreError : Error -> Json.Decode.Error
+toCoreError err =
+    case err of
+        UnexpectedJsonValue { expected, actual } ->
+            Json.Decode.Failure (jsonTypeName expected) (Jason.Value.toCoreValue actual)
+
+        MissingKey { key, dict } ->
+            Json.Decode.Failure ("an OBJECT with a field named `" ++ key ++ "`") (Jason.Value.toCoreValue (JsonObject dict))
+
+        ErrorAtKey { key, error } ->
+            Json.Decode.Field key (toCoreError error)
+
+        IndexOutOfBounds { index, array } ->
+            Json.Decode.Failure ("a LONGER array. Need index " ++ String.fromInt index ++ " but only see " ++ String.fromInt (Array.length array) ++ " entries") (Jason.Value.toCoreValue (JsonArray array))
+
+        ErrorAtIndex { index, error } ->
+            Json.Decode.Index index (toCoreError error)
+
+        OneOfErrors errors ->
+            Json.Decode.OneOf (List.map toCoreError errors)
+
+        CustomError message ->
+            Json.Decode.Failure message (Jason.Value.toCoreValue JsonNull)
 
 
 fromCoreError : Json.Decode.Error -> Error
