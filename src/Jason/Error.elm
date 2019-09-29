@@ -1,4 +1,4 @@
-module Jason.Error exposing (Error(..), fromCoreError, toCoreError, toString)
+module Jason.Error exposing (Error(..), fromCoreError, toCoreError, toString, toStringSensitive)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -60,11 +60,16 @@ fromCoreError coreError =
 
 toString : Error -> String
 toString error =
-    toStringHelper [] error
+    toStringHelper True [] error
 
 
-toStringHelper : List Path -> Error -> String
-toStringHelper pathList currentError =
+toStringSensitive : Error -> String
+toStringSensitive error =
+    toStringHelper False [] error
+
+
+toStringHelper : Bool -> List Path -> Error -> String
+toStringHelper shouldPreview pathList currentError =
     let
         withPath str =
             let
@@ -82,7 +87,15 @@ toStringHelper pathList currentError =
     in
     case currentError of
         UnexpectedJsonValue { expected, actual } ->
-            ("Expected " ++ jsonTypeName expected ++ " but got: " ++ jsonPreview actual)
+            let
+                actualString =
+                    if shouldPreview then
+                        jsonPreview actual
+
+                    else
+                        jsonTypeName actual
+            in
+            ("Expected " ++ jsonTypeName expected ++ " but got: " ++ actualString)
                 |> withPath
 
         MissingKey { key, dict } ->
