@@ -1,13 +1,14 @@
 {
     "type": "package",
     "name": "lydell/jason",
-    "summary": "elm/json re-implemented in Elm.",
+    "summary": "An experimental alternative to elm/json.",
     "license": "BSD-3-Clause",
     "version": "1.0.0",
     "exposed-modules": {
         "Jason": [
             "Jason.Decode",
-            "Jason.Encode"
+            "Jason.Error",
+            "Jason.Value"
         ]
     },
     "elm-version": "0.19.0 <= v < 0.20.0",
