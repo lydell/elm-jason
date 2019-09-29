@@ -7,6 +7,9 @@ import Json.Decode
 import Json.Encode
 
 
+{-| These are the kinds of errors that decoders can produce. When making your
+own errors, you probably want to use `CustomError`.
+-}
 type Error
     = UnexpectedJsonValue { expected : JsonValue, actual : JsonValue }
     | MissingKey { key : String, dict : Dict String JsonValue }
@@ -17,6 +20,9 @@ type Error
     | CustomError String
 
 
+{-| Turns our `Error` into a `Json.Decode.Error`. The wording of the error
+messages won’t be 100% the same as elm/json, but pretty close.
+-}
 toCoreError : Error -> Json.Decode.Error
 toCoreError ourError =
     case ourError of
@@ -42,6 +48,8 @@ toCoreError ourError =
             Json.Decode.Failure message (Jason.Value.toCoreValue JsonNull)
 
 
+{-| Turn a `Json.Decode.Error` into our `Error`.
+-}
 fromCoreError : Json.Decode.Error -> Error
 fromCoreError coreError =
     case coreError of
@@ -58,11 +66,18 @@ fromCoreError coreError =
             UnexpectedJsonValue { expected = JsonString message, actual = Jason.Value.fromCoreValue coreValue }
 
 
+{-| Turn an `Error` into a string. You can make your own function that
+pattern matches on `Error` and views errors however you like.
+-}
 toString : Error -> String
 toString error =
     toStringHelper True [] error
 
 
+{-| Like `toString`, but only shows the type of erraneous values, rather
+than a preview of the value itself. If you deal with sensitive data you
+might not want that to appear in error messages.
+-}
 toStringSensitive : Error -> String
 toStringSensitive error =
     toStringHelper False [] error
