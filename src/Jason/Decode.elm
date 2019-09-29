@@ -1,4 +1,4 @@
-module Jason.Decode exposing (Decoder, andMap, at, bool, dict, fail, field, float, fromCoreDecoder, fromMaybe, fromResult, index, int, lazy, list, map, map2, map3, map4, map5, map6, map7, map8, map9, nullable, oneOf, oneOrMore, optionalField, string, succeed, toCoreDecoder, tuple, tuple3, withDefault)
+module Jason.Decode exposing (Decoder, andMap, at, bool, dict, fail, field, float, fromCoreDecoder, fromMaybe, fromResult, index, int, lazy, list, map, map2, map3, map4, map5, map6, map7, map8, map9, nullable, oneOf, oneOrMore, optionalField, string, succeed, toCoreDecoder, tuple, tuple3, withDefault, rawField)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -151,33 +151,31 @@ field key decoder jsonValue =
 
 
 optionalField : String -> Decoder a -> Decoder (Maybe a)
-optionalField key decoder jsonValue =
-    case jsonValue of
-        JsonObject dictionary ->
-            case Dict.get key dictionary |> Maybe.withDefault Missing of
+optionalField key decoder =
+    rawField key
+        (\jsonValue ->
+            case jsonValue of
                 Missing ->
-                    case decoder Missing of
-                        Ok value ->
-                            Ok (Just value)
-
-                        Err _ ->
-                            Ok Nothing
+                    Ok Nothing
 
                 JsonNull ->
-                    case decoder JsonNull of
-                        Ok value ->
-                            Ok (Just value)
+                    Ok Nothing
 
-                        Err _ ->
-                            Ok Nothing
-
-                jsonValue2 ->
-                    case decoder jsonValue2 of
+                _ ->
+                    case decoder jsonValue of
                         Ok value ->
                             Ok (Just value)
 
                         Err error ->
                             Err (ErrorAtKey { key = key, error = error })
+        )
+
+
+rawField : String -> Decoder a -> Decoder a
+rawField key decoder jsonValue =
+    case jsonValue of
+        JsonObject dictionary ->
+            decoder (Dict.get key dictionary |> Maybe.withDefault Missing)
 
         _ ->
             Err (UnexpectedJsonValue { expected = JsonObject Dict.empty, actual = jsonValue })
