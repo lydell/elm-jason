@@ -77,15 +77,15 @@ listHelper decoder i arr acc =
 
         Just jsonValue ->
             case decoder jsonValue of
-                Ok val ->
+                Ok value ->
                     listHelper
                         decoder
                         (i + 1)
                         arr
-                        (Result.map ((::) val) acc)
+                        (Result.map ((::) value) acc)
 
-                Err err ->
-                    Err (ErrorAtIndex { index = i, error = err })
+                Err error ->
+                    Err (ErrorAtIndex { index = i, error = error })
 
 
 dict : Decoder a -> Decoder (Dict String a)
@@ -106,14 +106,14 @@ dictHelper decoder pairs acc =
 
         ( key, first ) :: rest ->
             case decoder first of
-                Ok val ->
+                Ok value ->
                     dictHelper
                         decoder
                         rest
-                        (Result.map (Dict.insert key val) acc)
+                        (Result.map (Dict.insert key value) acc)
 
-                Err err ->
-                    Err (ErrorAtKey { key = key, error = err })
+                Err error ->
+                    Err (ErrorAtKey { key = key, error = error })
 
 
 oneOrMore : (a -> List a -> b) -> Decoder a -> Decoder b
@@ -137,11 +137,11 @@ field key decoder jsonValue =
             case Dict.get key dictionary of
                 Just jsonValue2 ->
                     case decoder jsonValue2 of
-                        Ok val ->
-                            Ok val
+                        Ok value ->
+                            Ok value
 
-                        Err err ->
-                            Err (ErrorAtKey { key = key, error = err })
+                        Err error ->
+                            Err (ErrorAtKey { key = key, error = error })
 
                 Nothing ->
                     Err (MissingKey { key = key, dict = dictionary })
@@ -157,27 +157,27 @@ optionalField key decoder jsonValue =
             case Dict.get key dictionary |> Maybe.withDefault Missing of
                 Missing ->
                     case decoder Missing of
-                        Ok val ->
-                            Ok (Just val)
+                        Ok value ->
+                            Ok (Just value)
 
                         Err _ ->
                             Ok Nothing
 
                 JsonNull ->
                     case decoder JsonNull of
-                        Ok val ->
-                            Ok (Just val)
+                        Ok value ->
+                            Ok (Just value)
 
                         Err _ ->
                             Ok Nothing
 
                 jsonValue2 ->
                     case decoder jsonValue2 of
-                        Ok val ->
-                            Ok (Just val)
+                        Ok value ->
+                            Ok (Just value)
 
-                        Err err ->
-                            Err (ErrorAtKey { key = key, error = err })
+                        Err error ->
+                            Err (ErrorAtKey { key = key, error = error })
 
         _ ->
             Err (UnexpectedJsonValue { expected = JsonObject Dict.empty, actual = jsonValue })
@@ -190,11 +190,11 @@ index i decoder jsonValue =
             case Array.get i arr of
                 Just jsonValue2 ->
                     case decoder jsonValue2 of
-                        Ok val ->
-                            Ok val
+                        Ok value ->
+                            Ok value
 
-                        Err err ->
-                            Err (ErrorAtIndex { index = i, error = err })
+                        Err error ->
+                            Err (ErrorAtIndex { index = i, error = error })
 
                 Nothing ->
                     Err (IndexOutOfBounds { index = i, array = arr })
@@ -236,8 +236,8 @@ nullable decoder jsonValue =
 
 
 withDefault : a -> Decoder (Maybe a) -> Decoder a
-withDefault val =
-    map (Maybe.withDefault val)
+withDefault value =
+    map (Maybe.withDefault value)
 
 
 oneOf : List (Decoder a) -> Decoder a
@@ -254,11 +254,11 @@ oneOfHelper decoders jsonValue acc =
 
         first :: rest ->
             case first jsonValue of
-                Ok val ->
-                    Ok val
+                Ok value ->
+                    Ok value
 
-                Err err ->
-                    oneOfHelper rest jsonValue (Result.mapError ((::) err) acc)
+                Err error ->
+                    oneOfHelper rest jsonValue (Result.mapError ((::) error) acc)
 
 
 map : (a -> b) -> Decoder a -> Decoder b
@@ -314,11 +314,11 @@ andMap =
 andThen : (a -> Decoder b) -> Decoder a -> Decoder b
 andThen f decoder jsonValue =
     case decoder jsonValue of
-        Ok val ->
-            f val jsonValue
+        Ok value ->
+            f value jsonValue
 
-        Err err ->
-            Err err
+        Err error ->
+            Err error
 
 
 lazy : (() -> Decoder a) -> Decoder a
@@ -350,21 +350,21 @@ toCoreDecoder : Decoder a -> Json.Decode.Decoder a
 toCoreDecoder decoder =
     Json.Decode.value
         |> Json.Decode.andThen
-            (\val ->
-                case decoder (Jason.Value.fromCoreValue val) of
+            (\value ->
+                case decoder (Jason.Value.fromCoreValue value) of
                     Ok result ->
                         Json.Decode.succeed result
 
-                    Err err ->
-                        Json.Decode.fail (Jason.Error.toString err)
+                    Err error ->
+                        Json.Decode.fail (Jason.Error.toString error)
             )
 
 
 fromCoreDecoder : Json.Decode.Decoder a -> Decoder a
 fromCoreDecoder coreDecoder jsonValue =
     case Json.Decode.decodeValue coreDecoder (Jason.Value.toCoreValue jsonValue) of
-        Ok val ->
-            Ok val
+        Ok value ->
+            Ok value
 
-        Err err ->
-            Err (Jason.Error.fromCoreError err)
+        Err error ->
+            Err (Jason.Error.fromCoreError error)

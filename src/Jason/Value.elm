@@ -58,8 +58,8 @@ toCoreValue jsonValue =
         JsonNull ->
             Json.Encode.null
 
-        JsonArray arr ->
-            Json.Encode.array toCoreValue (Array.filter ((/=) Missing) arr)
+        JsonArray array ->
+            Json.Encode.array toCoreValue (Array.filter ((/=) Missing) array)
 
         JsonObject dictionary ->
             Json.Encode.dict identity toCoreValue (Dict.filter (always ((/=) Missing)) dictionary)
@@ -71,11 +71,11 @@ toCoreValue jsonValue =
 fromString : String -> Result String JsonValue
 fromString str =
     case Json.Decode.decodeString decoder str of
-        Ok val ->
-            Ok val
+        Ok value ->
+            Ok value
 
-        Err err ->
-            Err (Json.Decode.errorToString err)
+        Err error ->
+            Err (Json.Decode.errorToString error)
 
 
 toString : Int -> JsonValue -> String

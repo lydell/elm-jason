@@ -18,8 +18,8 @@ type Error
 
 
 toCoreError : Error -> Json.Decode.Error
-toCoreError err =
-    case err of
+toCoreError ourError =
+    case ourError of
         UnexpectedJsonValue { expected, actual } ->
             Json.Decode.Failure (jsonTypeName expected) (Jason.Value.toCoreValue actual)
 
@@ -45,11 +45,11 @@ toCoreError err =
 fromCoreError : Json.Decode.Error -> Error
 fromCoreError coreError =
     case coreError of
-        Json.Decode.Field key err ->
-            ErrorAtKey { key = key, error = fromCoreError err }
+        Json.Decode.Field key error ->
+            ErrorAtKey { key = key, error = fromCoreError error }
 
-        Json.Decode.Index i err ->
-            ErrorAtIndex { index = i, error = fromCoreError err }
+        Json.Decode.Index i error ->
+            ErrorAtIndex { index = i, error = fromCoreError error }
 
         Json.Decode.OneOf errors ->
             OneOfErrors (List.map fromCoreError errors)
@@ -59,12 +59,12 @@ fromCoreError coreError =
 
 
 toString : Error -> String
-toString err =
-    toStringHelper [] err
+toString error =
+    toStringHelper [] error
 
 
 toStringHelper : List Path -> Error -> String
-toStringHelper pathList err =
+toStringHelper pathList currentError =
     let
         withPath str =
             let
@@ -80,7 +80,7 @@ toStringHelper pathList err =
             in
             path ++ separator ++ str |> indent
     in
-    case err of
+    case currentError of
         UnexpectedJsonValue { expected, actual } ->
             ("Expected " ++ jsonTypeName expected ++ " but got: " ++ jsonPreview actual)
                 |> withPath
