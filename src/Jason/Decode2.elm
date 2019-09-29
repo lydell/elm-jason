@@ -1,4 +1,4 @@
-module Jason.Decode2 exposing (Decoder, andMap, at, bool, dict, fail, field, float, fromCoreDecoder, fromMaybe, fromResult, index, int, lazy, map, map2, map3, map4, map5, map6, map7, map8, map9, nullable, oneOf, oneOrMore, optionalField, string, succeed, toCoreDecoder, tuple, tuple3, withDefault)
+module Jason.Decode2 exposing (Decoder, andMap, at, bool, dict, fail, field, float, fromCoreDecoder, fromMaybe, fromResult, index, int, lazy, list, map, map2, map3, map4, map5, map6, map7, map8, map9, nullable, oneOf, oneOrMore, optionalField, string, succeed, toCoreDecoder, tuple, tuple3, withDefault)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
