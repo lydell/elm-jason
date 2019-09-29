@@ -147,7 +147,7 @@ field key decoder jsonValue =
                     Err (MissingKey { key = key, dict = dictionary })
 
         _ ->
-            Err (UnexpectedJsonValue { expected = JsonObject (Dict.fromList []), actual = jsonValue })
+            Err (UnexpectedJsonValue { expected = JsonObject Dict.empty, actual = jsonValue })
 
 
 optionalField : String -> Decoder a -> Decoder (Maybe a)
@@ -180,7 +180,7 @@ optionalField key decoder jsonValue =
                             Err (ErrorAtKey { key = key, error = err })
 
         _ ->
-            Err (UnexpectedJsonValue { expected = JsonObject (Dict.fromList []), actual = jsonValue })
+            Err (UnexpectedJsonValue { expected = JsonObject Dict.empty, actual = jsonValue })
 
 
 index : Int -> Decoder a -> Decoder a
