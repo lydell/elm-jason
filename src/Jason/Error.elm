@@ -110,14 +110,14 @@ toStringHelper shouldPreview pathList currentError =
                 |> withPath
 
         ErrorAtKey { key, error } ->
-            toStringHelper (Key key :: pathList) error
+            toStringHelper shouldPreview (Key key :: pathList) error
 
         IndexOutOfBounds { index, array } ->
             ("Index out of bounds. Index: " ++ String.fromInt index ++ ". Length: " ++ String.fromInt (Array.length array) ++ ".")
                 |> withPath
 
         ErrorAtIndex { index, error } ->
-            toStringHelper (Index index :: pathList) error
+            toStringHelper shouldPreview (Index index :: pathList) error
 
         OneOfErrors errors ->
             case errors of
@@ -125,7 +125,7 @@ toStringHelper shouldPreview pathList currentError =
                     "Ran into a Jason.Decode.oneOf with an empty list of decoders!"
 
                 [ error ] ->
-                    toStringHelper pathList error
+                    toStringHelper shouldPreview pathList error
 
                 _ ->
                     let
@@ -133,7 +133,7 @@ toStringHelper shouldPreview pathList currentError =
                             List.length errors
                     in
                     (String.fromInt numDecoders ++ " decoder choices" ++ " failed:")
-                        :: List.map ((++) "- " << toStringHelper pathList) errors
+                        :: List.map ((++) "- " << toStringHelper shouldPreview pathList) errors
                         |> String.join "\n"
                         |> indent
 
