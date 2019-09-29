@@ -154,8 +154,8 @@ optionalField : String -> Decoder a -> Decoder (Maybe a)
 optionalField key decoder jsonValue =
     case jsonValue of
         JsonObject dictionary ->
-            case Dict.get key dictionary of
-                Nothing ->
+            case Dict.get key dictionary |> Maybe.withDefault Missing of
+                Missing ->
                     case decoder Missing of
                         Ok val ->
                             Ok (Just val)
@@ -163,7 +163,7 @@ optionalField key decoder jsonValue =
                         Err _ ->
                             Ok Nothing
 
-                Just JsonNull ->
+                JsonNull ->
                     case decoder JsonNull of
                         Ok val ->
                             Ok (Just val)
@@ -171,7 +171,7 @@ optionalField key decoder jsonValue =
                         Err _ ->
                             Ok Nothing
 
-                Just jsonValue2 ->
+                jsonValue2 ->
                     case decoder jsonValue2 of
                         Ok val ->
                             Ok (Just val)
