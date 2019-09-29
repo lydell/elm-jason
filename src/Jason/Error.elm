@@ -107,25 +107,22 @@ toStringHelper pathList err =
             toStringHelper (Index index :: pathList) error
 
         OneOfErrors errors ->
-            let
-                numDecoders =
-                    List.length errors
+            case errors of
+                [] ->
+                    "Ran into a Jason.Decode.oneOf with an empty list of decoders!"
 
-                s =
-                    if numDecoders == 1 then
-                        ""
+                [ error ] ->
+                    toStringHelper pathList error
 
-                    else
-                        "s"
-            in
-            if numDecoders == 0 then
-                "Ran into a Jason.Decode.oneOf with an empty list of decoders!"
-
-            else
-                (String.fromInt numDecoders ++ " decoder" ++ s ++ " failed:")
-                    :: List.map ((++) "- " << toStringHelper pathList) errors
-                    |> String.join "\n"
-                    |> indent
+                _ ->
+                    let
+                        numDecoders =
+                            List.length errors
+                    in
+                    (String.fromInt numDecoders ++ " decoder choices" ++ " failed:")
+                        :: List.map ((++) "- " << toStringHelper pathList) errors
+                        |> String.join "\n"
+                        |> indent
 
         CustomError message ->
             withPath message
