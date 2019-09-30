@@ -1,4 +1,4 @@
-module Jason.Decode exposing (Decoder, andMap, at, bool, dict, fail, field, float, fromCoreDecoder, fromMaybe, fromResult, index, int, lazy, list, map, map2, map3, map4, map5, map6, map7, map8, map9, nullable, oneOf, oneOrMore, optionalField, rawField, string, succeed, toCoreDecoder, tuple, tuple3, withDefault)
+module Jason.Decode exposing (Decoder, andMap, at, bool, dict, fail, failRaw, field, float, fromCoreDecoder, fromMaybe, fromResult, index, int, lazy, list, map, map2, map3, map4, map5, map6, map7, map8, map9, nullable, oneOf, oneOrMore, optionalField, rawField, string, succeed, toCoreDecoder, tuple, tuple3, withDefault)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -48,7 +48,7 @@ float jsonValue =
             Ok num
 
         _ ->
-            Err (UnexpectedJsonValue { expected = JsonNumber 0, actual = jsonValue })
+            Err (UnexpectedJsonValue { expected = JsonNumber 1.5, actual = jsonValue })
 
 
 {-| Like `Json.Decode.int`.
@@ -65,10 +65,10 @@ int jsonValue =
                 Ok floored
 
             else
-                Err (CustomError ("Expected an Int, but got: " ++ String.fromFloat num))
+                Err (UnexpectedJsonValue { expected = JsonNumber 1, actual = jsonValue })
 
         _ ->
-            Err (UnexpectedJsonValue { expected = JsonNumber 0, actual = jsonValue })
+            Err (UnexpectedJsonValue { expected = JsonNumber 1, actual = jsonValue })
 
 
 {-| Like `Json.Decode.list`.
@@ -150,13 +150,13 @@ oneOrMore : (a -> List a -> b) -> Decoder a -> Decoder b
 oneOrMore f decoder =
     list decoder
         |> andThen
-            (\items ->
+            (\items _ ->
                 case items of
                     [] ->
-                        fail (CustomError "Expected a list with at least one item, but got an empty list.")
+                        Err OneOrMoreEmptyList
 
                     first :: rest ->
-                        succeed (f first rest)
+                        Ok (f first rest)
             )
 
 
@@ -425,13 +425,17 @@ succeed =
     always << Ok
 
 
-{-| Like `Json.Decode.fail`, except that it takes an `Error` instead of a `String`.
-
-You probably want to use `CustomError` here.
-
+{-| Like `Json.Decode.fail`.
 -}
-fail : Error -> Decoder a
-fail =
+fail : String -> Decoder a
+fail message jsonValue =
+    Err (CustomError { message = message, jsonValue = jsonValue })
+
+
+{-| Like `Json.Decode.fail`, except that it takes an `Error` instead of a `String`.
+-}
+failRaw : Error -> Decoder a
+failRaw =
     always << Err
 
 

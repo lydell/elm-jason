@@ -17,7 +17,8 @@ type Error
     | IndexOutOfBounds { index : Int, array : Array JsonValue }
     | ErrorAtIndex { index : Int, error : Error }
     | OneOfErrors (List Error)
-    | CustomError String
+    | OneOrMoreEmptyList
+    | CustomError { message : String, jsonValue : JsonValue }
 
 
 {-| Turns our `Error` into a `Json.Decode.Error`. The wording of the error
@@ -44,8 +45,11 @@ toCoreError ourError =
         OneOfErrors errors ->
             Json.Decode.OneOf (List.map toCoreError errors)
 
-        CustomError message ->
-            Json.Decode.Failure message (Jason.Value.toCoreValue JsonNull)
+        OneOrMoreEmptyList ->
+            Json.Decode.Failure "Expected a list with at least one item, but got an empty list." (Jason.Value.toCoreValue (JsonArray Array.empty))
+
+        CustomError { message, jsonValue } ->
+            Json.Decode.Failure message (Jason.Value.toCoreValue jsonValue)
 
 
 {-| Turn a `Json.Decode.Error` into our `Error`.
@@ -99,18 +103,17 @@ toStringHelper shouldPreview pathList currentError =
                         ":\n"
             in
             path ++ separator ++ str |> indent
+
+        preview =
+            if shouldPreview then
+                jsonPreview
+
+            else
+                jsonTypeName
     in
     case currentError of
         UnexpectedJsonValue { expected, actual } ->
-            let
-                actualString =
-                    if shouldPreview then
-                        jsonPreview actual
-
-                    else
-                        jsonTypeName actual
-            in
-            ("Expected " ++ jsonTypeName expected ++ " but got: " ++ actualString)
+            ("Expected " ++ jsonTypeName expected ++ " but got: " ++ preview actual)
                 |> withPath
 
         MissingKey { key, dict } ->
@@ -152,8 +155,20 @@ toStringHelper shouldPreview pathList currentError =
                         |> String.join "\n"
                         |> indent
 
-        CustomError message ->
-            withPath message
+        OneOrMoreEmptyList ->
+            "Expected a list with at least one item, but got an empty list."
+
+        CustomError { message, jsonValue } ->
+            let
+                extendedMessage =
+                    if String.endsWith "." message || String.endsWith "!" message then
+                        message ++ " Got: "
+
+                    else
+                        message ++ ". Got: "
+            in
+            (extendedMessage ++ preview jsonValue)
+                |> withPath
 
 
 indent : String -> String
@@ -167,8 +182,13 @@ jsonTypeName jsonValue =
         JsonString _ ->
             "a JSON string"
 
-        JsonNumber _ ->
-            "a JSON number"
+        JsonNumber num ->
+            -- This is a little ugly, but does the trick…
+            if toFloat (floor num) == num then
+                "an integer JSON number"
+
+            else
+                "a JSON number"
 
         JsonBool _ ->
             "a JSON bool"
