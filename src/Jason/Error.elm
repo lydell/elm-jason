@@ -90,19 +90,13 @@ toStringSensitive error =
 toStringHelper : Bool -> List Path -> Error -> String
 toStringHelper shouldPreview pathList currentError =
     let
-        withPath str =
+        withPath lines =
             let
                 path =
                     pathListToString pathList
-
-                separator =
-                    if String.isEmpty path then
-                        ""
-
-                    else
-                        ":\n"
             in
-            path ++ separator ++ str |> indent
+            ("At " ++ path ++ ":\nError: " ++ String.join "\n" lines)
+                |> indent
 
         preview =
             if shouldPreview then
@@ -113,8 +107,10 @@ toStringHelper shouldPreview pathList currentError =
     in
     case currentError of
         UnexpectedJsonValue { expected, actual } ->
-            ("Expected " ++ jsonTypeName expected ++ " but got: " ++ preview actual)
-                |> withPath
+            withPath
+                [ "Expected " ++ jsonTypeName expected
+                , "Actual: " ++ preview actual
+                ]
 
         MissingKey { key, dict } ->
             let
@@ -124,15 +120,22 @@ toStringHelper shouldPreview pathList currentError =
                         |> List.map jsonString
                         |> String.join ", "
             in
-            ("This key does not exist: " ++ jsonString key ++ ". Available keys: " ++ keys ++ ".")
-                |> withPath
+            withPath
+                [ "This key does not exist: " ++ jsonString key
+                , "Available keys: " ++ keys
+                , "Value: " ++ preview (JsonObject dict)
+                ]
 
         ErrorAtKey { key, error } ->
             toStringHelper shouldPreview (Key key :: pathList) error
 
         IndexOutOfBounds { index, array } ->
-            ("Index out of bounds. Index: " ++ String.fromInt index ++ ". Length: " ++ String.fromInt (Array.length array) ++ ".")
-                |> withPath
+            withPath
+                [ "Index out of bounds."
+                , "Index: " ++ String.fromInt index
+                , "Length: " ++ String.fromInt (Array.length array)
+                , "Value: " ++ preview (JsonArray array)
+                ]
 
         ErrorAtIndex { index, error } ->
             toStringHelper shouldPreview (Index index :: pathList) error
@@ -159,16 +162,10 @@ toStringHelper shouldPreview pathList currentError =
             "Expected a list with at least one item, but got an empty list."
 
         CustomError { message, jsonValue } ->
-            let
-                extendedMessage =
-                    if String.endsWith "." message || String.endsWith "!" message then
-                        message ++ " Got: "
-
-                    else
-                        message ++ ". Got: "
-            in
-            (extendedMessage ++ preview jsonValue)
-                |> withPath
+            withPath
+                [ message
+                , "Value: " ++ preview jsonValue
+                ]
 
 
 indent : String -> String
@@ -225,7 +222,7 @@ pathListToString : List Path -> String
 pathListToString pathList =
     case List.reverse pathList of
         [] ->
-            ""
+            "top-level value"
 
         (first :: _) as fullPath ->
             let
