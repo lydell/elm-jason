@@ -302,8 +302,8 @@ swallows errors by returning the default value instead.
 
 -}
 withDefault : a -> Decoder (Maybe a) -> Decoder a
-withDefault value =
-    map (Maybe.withDefault value)
+withDefault =
+    map << Maybe.withDefault
 
 
 {-| Like `Json.Decode.oneOf`.
@@ -415,7 +415,7 @@ andThen f decoder jsonValue =
 -}
 lazy : (() -> Decoder a) -> Decoder a
 lazy thunk =
-    andThen thunk (succeed ())
+    thunk ()
 
 
 {-| Like `Json.Decode.succeed`.
