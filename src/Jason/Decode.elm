@@ -132,16 +132,16 @@ dictHelper decoder pairs acc =
         [] ->
             acc
 
-        ( key, first ) :: rest ->
+        ( fieldName, first ) :: rest ->
             case decoder first of
                 Ok value ->
                     dictHelper
                         decoder
                         rest
-                        (Result.map (Dict.insert key value) acc)
+                        (Result.map (Dict.insert fieldName value) acc)
 
                 Err error ->
-                    Err (ErrorAtKey { key = key, error = error })
+                    Err (ErrorAtField { field = fieldName, error = error })
 
 
 {-| Like `Json.Decode.oneOrMore`.
@@ -166,20 +166,20 @@ This requires the field to be present in the object.
 
 -}
 field : String -> Decoder a -> Decoder a
-field key decoder jsonValue =
+field fieldName decoder jsonValue =
     case jsonValue of
         JsonObject dictionary ->
-            case Dict.get key dictionary of
+            case Dict.get fieldName dictionary of
                 Just jsonValue2 ->
                     case decoder jsonValue2 of
                         Ok value ->
                             Ok value
 
                         Err error ->
-                            Err (ErrorAtKey { key = key, error = error })
+                            Err (ErrorAtField { field = fieldName, error = error })
 
                 Nothing ->
-                    Err (MissingKey { key = key, dict = dictionary })
+                    Err (MissingField { field = fieldName, dict = dictionary })
 
         _ ->
             Err (UnexpectedJsonValue { expected = JsonObject Dict.empty, actual = jsonValue })
@@ -197,8 +197,8 @@ they set them to `null`. Sometimes they’re not even consistent.
 
 -}
 optionalField : String -> Decoder a -> Decoder (Maybe a)
-optionalField key decoder =
-    rawField key
+optionalField fieldName decoder =
+    rawField fieldName
         (\jsonValue ->
             case jsonValue of
                 Missing ->
@@ -213,7 +213,7 @@ optionalField key decoder =
                             Ok (Just value)
 
                         Err error ->
-                            Err (ErrorAtKey { key = key, error = error })
+                            Err (ErrorAtField { field = fieldName, error = error })
         )
 
 
@@ -222,10 +222,10 @@ to your decoder. This lets you distinguish between missing fields and fields
 set to `null`, should you ever need to.
 -}
 rawField : String -> Decoder a -> Decoder a
-rawField key decoder jsonValue =
+rawField fieldName decoder jsonValue =
     case jsonValue of
         JsonObject dictionary ->
-            decoder (Dict.get key dictionary |> Maybe.withDefault Missing)
+            decoder (Dict.get fieldName dictionary |> Maybe.withDefault Missing)
 
         _ ->
             Err (UnexpectedJsonValue { expected = JsonObject Dict.empty, actual = jsonValue })

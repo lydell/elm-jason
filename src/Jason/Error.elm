@@ -12,8 +12,8 @@ own errors, you probably want to use `CustomError`.
 -}
 type Error
     = UnexpectedJsonValue { expected : JsonValue, actual : JsonValue }
-    | MissingKey { key : String, dict : Dict String JsonValue }
-    | ErrorAtKey { key : String, error : Error }
+    | MissingField { field : String, dict : Dict String JsonValue }
+    | ErrorAtField { field : String, error : Error }
     | IndexOutOfBounds { index : Int, array : Array JsonValue }
     | ErrorAtIndex { index : Int, error : Error }
     | OneOfErrors (List Error)
@@ -30,11 +30,11 @@ toCoreError ourError =
         UnexpectedJsonValue { expected, actual } ->
             Json.Decode.Failure (jsonTypeName expected) (Jason.Value.toCoreValue actual)
 
-        MissingKey { key, dict } ->
-            Json.Decode.Failure ("an OBJECT with a field named `" ++ key ++ "`") (Jason.Value.toCoreValue (JsonObject dict))
+        MissingField { field, dict } ->
+            Json.Decode.Failure ("an OBJECT with a field named `" ++ field ++ "`") (Jason.Value.toCoreValue (JsonObject dict))
 
-        ErrorAtKey { key, error } ->
-            Json.Decode.Field key (toCoreError error)
+        ErrorAtField { field, error } ->
+            Json.Decode.Field field (toCoreError error)
 
         IndexOutOfBounds { index, array } ->
             Json.Decode.Failure ("a LONGER array. Need index " ++ String.fromInt index ++ " but only see " ++ String.fromInt (Array.length array) ++ " entries") (Jason.Value.toCoreValue (JsonArray array))
@@ -57,8 +57,8 @@ toCoreError ourError =
 fromCoreError : Json.Decode.Error -> Error
 fromCoreError coreError =
     case coreError of
-        Json.Decode.Field key error ->
-            ErrorAtKey { key = key, error = fromCoreError error }
+        Json.Decode.Field field error ->
+            ErrorAtField { field = field, error = fromCoreError error }
 
         Json.Decode.Index i error ->
             ErrorAtIndex { index = i, error = fromCoreError error }
@@ -108,30 +108,31 @@ toStringHelper shouldPreview pathList currentError =
     case currentError of
         UnexpectedJsonValue { expected, actual } ->
             withPath
-                [ "Expected " ++ jsonTypeName expected
-                , "Actual: " ++ preview actual
+                [ "Expected " ++ jsonTypeName expected ++ "!"
+                , "Value: " ++ preview actual
                 ]
 
-        MissingKey { key, dict } ->
+        MissingField { field, dict } ->
             let
-                keys =
+                fields =
                     dict
                         |> Dict.keys
                         |> List.map jsonString
                         |> String.join ", "
             in
             withPath
-                [ "This key does not exist: " ++ jsonString key
-                , "Available keys: " ++ keys
+                [ "This field does not exist!"
+                , "Field: " ++ jsonString field
+                , "Available fields: " ++ fields
                 , "Value: " ++ preview (JsonObject dict)
                 ]
 
-        ErrorAtKey { key, error } ->
-            toStringHelper shouldPreview (Key key :: pathList) error
+        ErrorAtField { field, error } ->
+            toStringHelper shouldPreview (Field field :: pathList) error
 
         IndexOutOfBounds { index, array } ->
             withPath
-                [ "Index out of bounds."
+                [ "The index is out of bounds!"
                 , "Index: " ++ String.fromInt index
                 , "Length: " ++ String.fromInt (Array.length array)
                 , "Value: " ++ preview (JsonArray array)
@@ -153,13 +154,13 @@ toStringHelper shouldPreview pathList currentError =
                         numDecoders =
                             List.length errors
                     in
-                    (String.fromInt numDecoders ++ " decoder choices" ++ " failed:")
+                    ("None of these " ++ String.fromInt numDecoders ++ " decoder choices succeeded:")
                         :: List.map ((++) "- " << toStringHelper shouldPreview pathList) errors
                         |> String.join "\n"
                         |> indent
 
         OneOrMoreEmptyList ->
-            "Expected a list with at least one item, but got an empty list."
+            "Expected a list with at least one item, but got an empty list!"
 
         CustomError { message, jsonValue } ->
             withPath
@@ -204,15 +205,15 @@ jsonTypeName jsonValue =
 
 
 type Path
-    = Key String
+    = Field String
     | Index Int
 
 
 pathToString : Path -> String
 pathToString path =
     case path of
-        Key key ->
-            jsonString key
+        Field field ->
+            jsonString field
 
         Index index ->
             String.fromInt index
@@ -228,7 +229,7 @@ pathListToString pathList =
             let
                 start =
                     case first of
-                        Key _ ->
+                        Field _ ->
                             "object"
 
                         Index _ ->
