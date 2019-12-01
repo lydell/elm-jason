@@ -1,4 +1,4 @@
-# Jason
+# Jason ![CI badge](https://github.com/lydell/elm-jason/workflows/CI/badge.svg?branch=master)
 
 This is a re-implementation of [elm/json](https://package.elm-lang.org/packages/elm/json/latest/) in Elm (rather than JavaScript).
 
